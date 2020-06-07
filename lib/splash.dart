@@ -25,15 +25,15 @@ class SplashForm extends State<Splash>{
   }
   @override
   Widget build(BuildContext context){
-    return !loged ? Login() : SplashScreen(
+    return SplashScreen(
       seconds: 4,
-      image: Image.network("https://icons-for-free.com/iconfiles/png/512/clapper+cut+director+making+movie+take+icon-1320195777589696004.png"),
-      navigateAfterSeconds: Dashboard(),
-      title: Text("Medilife", 
-        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20.0),
-      ),
+      image: Image.asset("images/logo.png", height: 300,),
+      navigateAfterSeconds: !loged ? Login() : Dashboard(),
       gradientBackground: new LinearGradient(
-        colors: [new Color.fromRGBO(150, 10, 10, 0.8), Colors.black], 
+        colors: [
+          Colors.blue[900], 
+          Colors.black
+        ], 
         begin: Alignment.center, 
         end: Alignment.bottomCenter
       ),
