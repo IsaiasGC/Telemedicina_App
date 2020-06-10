@@ -5,17 +5,21 @@ import 'dart:convert' as convert;
 import 'package:http/http.dart' as http;
 
 class Consultas extends StatefulWidget{
-  const Consultas({Key key}) : super(key: key);
+  final int id;
+  const Consultas(this.id,{Key key}) : super(key: key);
   @override
-  State<StatefulWidget> createState() => ConsultasForm();
+  State<StatefulWidget> createState() => ConsultasForm(id);
 }
 
 class ConsultasForm extends State<Consultas>{
+  final int id;
   List consultas;
-  bool isLoading=true;
+  bool load=false;
+
+  ConsultasForm(this.id);
 
   Future<String> getConsultas() async{
-    String bodyJSON='{ "id_paciente" : ${5} }';
+    String bodyJSON='{ "id_paciente" : $id }';
     var response=await http.post('http://192.168.101.17:8000/api/consultasPaciente',
       headers: {
         "Accept": "application/json",
@@ -50,7 +54,7 @@ class ConsultasForm extends State<Consultas>{
                       // decoration: BoxDecoration(
                       //   border: Border( right: BorderSide(width: 1.0, color: Colors.black))
                       // ),
-                      child: consultas[index]['foto_sintomas']!=null ? Image.network("http://192.168.101.17:8000/uploads/"+consultas[index]['foto_sintomas'], width: 100,) : Icon(Icons.photo, size: 50.00, color: Theme.of(context).textTheme.bodyText1.color,),
+                      child: consultas[index]['foto_sintomas']!=null ? Image.network("http://192.168.101.17:8000/uploads/"+consultas[index]['foto_sintomas'], width: 100,) : Icon(Icons.broken_image, size: 50.00, color: Theme.of(context).textTheme.bodyText1.color,),
                     ),
                     title: Text(
                       consultas[index]['especialidad'],
@@ -113,13 +117,18 @@ class ConsultasForm extends State<Consultas>{
           IconButton(
             tooltip: 'Nueva Consulta',
             icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async{
+              final bool refresh=await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => NuevaConsulta(),
+                  builder: (context) => NuevaConsulta(id),
                 ),
               );
+              if(refresh){
+                this.setState(() {
+                  load=!load;
+                });
+              }
             },
           ),
         ],
@@ -127,7 +136,7 @@ class ConsultasForm extends State<Consultas>{
       body: Container( 
         color: Colors.blueAccent[100],
         child: FutureBuilder<String>(
-          future: getConsultas(),
+          future: load ? getConsultas() : getConsultas(),
           builder: (context, snapshot){
             if(snapshot.connectionState==ConnectionState.done){
               return getConsultsList(context);

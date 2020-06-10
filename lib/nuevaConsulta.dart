@@ -2,38 +2,82 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:gallery_saver/gallery_saver.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:convert' as convert;
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 
 class NuevaConsulta extends StatefulWidget {
+  final int id;
+  const NuevaConsulta(this.id);
   @override
-  _NuevaConsultaForm createState() => _NuevaConsultaForm();
+  _NuevaConsultaForm createState() => _NuevaConsultaForm(id);
 }
 
 class _NuevaConsultaForm extends State<NuevaConsulta> {
-  final txtSintomasController = TextEditingController();
+  final int id;
+  final txtSintomasController;
   File imageFile;
   var loading=false;
-  String dropdownValue="One";
+  int dropdownValue;
+  List especialidades;
+  String imagePath;
+
+  _NuevaConsultaForm(this.id)
+    : txtSintomasController = TextEditingController();
   
-  Future<void> sendData() async{
+  @override
+  initState(){
+    super.initState();
+    getEspecialidades();
+  }
+
+  Future<void> sendData(BuildContext context) async{
     setState(() {
       loading=true;
     });
     Dio dio = new Dio();
     FormData formData = new FormData.fromMap({
-      "id_paciente": 5,
-      "sintomas": "ALgun sintoma o mas",
-      "id_especialidad": 10,
-      "file": imageFile
+      "id_paciente": id,
+      "sintomas": txtSintomasController.value.text,
+      "id_especialidad": dropdownValue,
+      // "files":{
+        "foto":  imageFile!=null ? await MultipartFile.fromFile(imageFile.path, filename: "fotoSintoma.jpg") : null
+      // }
     });
-    var response=await dio.post("/api/consultaCrear", data: formData);
+    var response=await dio.post("http://192.168.101.17:8000/api/consultasCrear", 
+      data: formData,
+      onSendProgress: (int sent, int total) {
+        print("$sent / $total");
+      },
+    );
     log("StatusCode: ${response.statusCode}");
-    // if(response.statusCode==200){
-
-    // }
+    if(response.statusCode==200){
+      Navigator.pop(context, true);
+    }
+    setState(() {
+      loading=false;
+    });
+  }
+  Future<String> getEspecialidades() async{
     setState(() {
       loading=true;
     });
+    var response=await http.get('http://192.168.101.17:8000/api/especialidades',
+      headers: {
+        "Accept": "application/json",
+      },
+    );
+    
+    print('Status code: ${response.statusCode}');
+    if(response.statusCode==200){
+        this.especialidades=convert.jsonDecode(response.body);
+    }
+    setState(() {
+      loading=false;
+    });
+    return "Accept";
   }
   Future<void> _showSelectionDialog(BuildContext context) {
     return showDialog(
@@ -73,14 +117,28 @@ class _NuevaConsultaForm extends State<NuevaConsulta> {
   }
   void _openCamera(BuildContext context) async {
     var picture = await ImagePicker.pickImage(source: ImageSource.camera);
-    this.setState(() {
-      imageFile = picture;
-    });
+    if(picture!=null){
+      await getApplicationDocumentsDirectory().then((value) => imagePath=value.path+"/fotoSintoma.jpg");
+      log("Path nuevo: $imagePath");
+      await picture.copy(imagePath).then((value) => {
+        this.setState(() {
+          imageFile = value;
+        })
+      });
+      log("Path nuevo File: ${imageFile.path}");
+    }
     Navigator.of(context).pop();
   }
   Widget _setImageView() {
     if (imageFile != null) {
-      return Image.file(imageFile, width: 50);
+      return Container(
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white60,
+          borderRadius: BorderRadius.circular(10.0)
+        ),
+        child:Image.file(imageFile, height: 200)
+      );
     } else {
       return Container(
         padding: EdgeInsets.only(top: 10),
@@ -99,24 +157,23 @@ class _NuevaConsultaForm extends State<NuevaConsulta> {
         color: Colors.white60,
         borderRadius: BorderRadius.circular(10.0)
       ),
-      child:DropdownButton<String>(
+      child:DropdownButton<int>(
+        hint: Text("Elija una especialidad"),
         value: dropdownValue,
         icon: Icon(Icons.arrow_drop_down),
         dropdownColor: Colors.grey[200],
         iconSize: 24,
         elevation: 20,
-        // style: TextStyle(color: Colors.deepPurple, ),
-        
-        onChanged: (String newValue) {
+        onChanged: (int newValue) {
           setState(() {
             dropdownValue = newValue;
           });
         },
-        items: <String>['One', 'Two', 'Free', 'Four']
-            .map<DropdownMenuItem<String>>((String value) {
-          return DropdownMenuItem<String>(
-            value: value,
-            child: Text(value),
+        items: especialidades
+            .map<DropdownMenuItem<int>>((esp) {
+          return DropdownMenuItem<int>(
+            value: int.parse(esp["id"]),
+            child: Text(esp["especialidad"]),
           );
         }).toList(),
       ),
@@ -139,7 +196,7 @@ class _NuevaConsultaForm extends State<NuevaConsulta> {
       ),
     );
   }
-  Widget getCrearButton(){
+  Widget getCrearButton(BuildContext context){
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 16.0),
       child: RaisedButton(
@@ -147,7 +204,7 @@ class _NuevaConsultaForm extends State<NuevaConsulta> {
           borderRadius: BorderRadius.circular(24),
         ),
         onPressed: () {
-
+          sendData(context);
         },
         padding: EdgeInsets.all(12),
         color: Colors.blue[900],
@@ -164,7 +221,7 @@ class _NuevaConsultaForm extends State<NuevaConsulta> {
           tooltip: 'Regresar',
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.pop(context,null);
+            Navigator.pop(context,false);
           },
         ),
         centerTitle: true,
@@ -183,7 +240,7 @@ class _NuevaConsultaForm extends State<NuevaConsulta> {
               SizedBox(height: 30),
               _setImageView(),
               SizedBox(height: 10,),
-              getCrearButton(),
+              getCrearButton(context),
 
             ],
           ),

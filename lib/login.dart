@@ -17,48 +17,86 @@ class LoginForm extends State<Login>{
   final txtPwdController = TextEditingController();
   var checked=false;
   var loading=false;
+  int idPacinete;
 
   Future login(BuildContext context) async{
     if(txtUserController.value.text!='' && txtPwdController.value.text!=''){
-      // setState(() {
-      //   loading=true;
-      // });
-      // String bodyJSON='{ "email" : "${txtUserController.value.text}", "password" : "${txtPwdController.value.text}" }';
-      // log(bodyJSON);
-      // var response=await http.post('http://192.168.101.17:8000/api/login',
-      //   headers: {
-      //     "Content-Type": "application/json"
-      //   },
-      //   body: bodyJSON
-      // );
-      // print('Status code: ${response.statusCode}');
-      // if(response.statusCode==200){
-      //   SharedPreferences pref=await SharedPreferences.getInstance();
-      //   await pref.setBool('loged', checked);
+      setState(() {
+        loading=true;
+      });
+      String bodyJSON='{ "email" : "${txtUserController.value.text}", "password" : "${txtPwdController.value.text}" }';
+      log(bodyJSON);
+      var response=await http.post('http://192.168.101.17:8000/api/login',
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: bodyJSON
+      );
+      print('Status code: ${response.statusCode}');
+      if(response.statusCode==200){
+        var user=convert.jsonDecode(response.body);
+        SharedPreferences pref=await SharedPreferences.getInstance();
+        await pref.setBool('loged', checked);
+        await getIdPaciente(user['id']);
+        await pref.setInt('id_paciente', idPacinete);
         Navigator.pushReplacementNamed(context, "/dashboard");
-      // }
-      // setState(() {
-      //   loading=false;
-      // });
-    }
-    showDialog(
-      context: context,
-      builder: (BuildContext context){
-        return AlertDialog(
-          title: Text("App Error"),
-          content: Text("Error al Autenticarse, ingrese email y contraseña validos"),
-          actions: <Widget>[
-            new FlatButton(
-              child: Text("Cerrar"),
-              color: Colors.red,
-              onPressed: (){
-                Navigator.of(context).pop();
-              },
-            )
-          ],
+      }else{
+        showDialog(
+          context: context,
+          builder: (BuildContext context){
+            return AlertDialog(
+              title: Text("App Error"),
+              content: Text("Emial o Contraseña invalidos"),
+              actions: <Widget>[
+                new FlatButton(
+                  child: Text("Cerrar"),
+                  color: Colors.red,
+                  onPressed: (){
+                    Navigator.of(context).pop();
+                  },
+                )
+              ],
+            );
+          }
         );
       }
-    );
+    }else{
+      showDialog(
+        context: context,
+        builder: (BuildContext context){
+          return AlertDialog(
+            title: Text("App Error"),
+            content: Text("Llene todos los campos requeridos"),
+            actions: <Widget>[
+              new FlatButton(
+                child: Text("Cerrar"),
+                color: Colors.red,
+                onPressed: (){
+                  Navigator.of(context).pop();
+                },
+              )
+            ],
+          );
+        }
+      );
+    }
+    setState(() {
+      loading=false;
+    });
+  }
+  Future<Null> getIdPaciente(int id)async{
+    // var response=await http.get('http://192.168.101.17:8000/api/pacinete/id/$id',
+    //   headers: {
+    //     "Accept": "application/json"
+    //   },
+    // );
+    // print('Status code: ${response.statusCode}');
+    // if(response.statusCode==200){
+    //   var paciente=convert.jsonDecode(response.body);
+    //   log("id_paciente: ${paciente['id']}");
+    //   idPacinete=paciente['id'];
+    // }
+    idPacinete=5;
   }
   @override
   Widget build(BuildContext context) {

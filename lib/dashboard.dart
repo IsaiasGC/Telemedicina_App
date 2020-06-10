@@ -2,6 +2,7 @@ import 'package:Telemedicina_App/consultas.dart';
 import 'package:Telemedicina_App/historial.dart';
 import 'package:Telemedicina_App/reportes.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Dashboard extends StatefulWidget{
   const Dashboard({Key key}) : super(key: key);
@@ -10,13 +11,31 @@ class Dashboard extends StatefulWidget{
 }
 
 class DashboardForm extends State<Dashboard>{
+  int id;
   int index = 0;
+  var loading=false;
 
+  @override
+  void initState() {
+    getID();
+    super.initState();
+  }
+  Future getID() async{
+    setState(() {
+      loading=true;
+    });
+    SharedPreferences pref=await SharedPreferences.getInstance();
+    var prefID = pref.getInt('id_paciente');
+    this.setState(() {
+      id=prefID;
+      loading=false;
+    });
+  }
   @override
   Widget build(BuildContext context) {
     final navPages = <Widget>[
-      Consultas(),
-      Historial(),
+      Consultas(this.id),
+      Historial(this.id),
       Reportes(),
     ];
     final drawerDashboard = Drawer(
@@ -68,7 +87,7 @@ class DashboardForm extends State<Dashboard>{
     );
     final scaffoldDrawer=Scaffold(
       body: Center(
-        child: navPages[index]
+        child: loading ? CircularProgressIndicator() : navPages[index]
       ),
       drawer: drawerDashboard,
     );
